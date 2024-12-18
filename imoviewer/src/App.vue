@@ -2,7 +2,7 @@
   <div>
     <button @click="activeComp = 'TestAPI'">Test API</button>
     <button @click="activeComp = 'HeatMapViewer'">Heatmap</button>
-    <button @click="activeComp = ''">GridHeatMap</button>
+    <button @click="activeComp = 'GridHeatMap'">GridHeatMap</button>
     <button @click="activeComp = 'ClusterMarker'">ClusterMarker</button>
     <button @click="activeComp = 'ClusterMarker2'">ClusterMarker2</button>
     <component :is="activeComp"></component>
@@ -13,6 +13,7 @@
 import HeatMapViewer from './components/HeatMapViewer.vue';
 import ClusterMarker2 from './components/ClusterMarker2.vue';
 import ClusterMarker from './components/ClusterMarker.vue';
+import GridHeatMap from './components/GridHeatMap.vue';
 import TestAPI from './components/TestAPI.vue';
 export default {
   name: 'App',
@@ -21,6 +22,7 @@ export default {
     ClusterMarker2,
     ClusterMarker,
     TestAPI,
+    GridHeatMap
   },
   data() {
       return {

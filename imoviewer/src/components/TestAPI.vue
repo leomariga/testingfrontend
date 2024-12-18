@@ -2,7 +2,7 @@
   <ul><button @click="getData">GetData</button></ul>
   <ul>
     <li v-for="idata in imodata" :key="idata.ID">
-      {{ idata.Address }}
+      {{ idata.Area }}, {{ idata.Price }}
     </li>
   </ul>
 </template>
