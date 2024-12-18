@@ -1,0 +1,9 @@
+https://github.com/Meteo-Concept/leaflet-inflatable-markers-group
+
+https://github.com/Leaflet/Leaflet.markercluster
+
+https://github.com/sul-dlss/blacklight_heatmaps
+
+https://github.com/mejackreed/leaflet-solr-heatmap
+
+https://geo.rocks/post/leaflet-hexbins/
