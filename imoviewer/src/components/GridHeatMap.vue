@@ -1,6 +1,6 @@
 <template>
   <div>
-    <ul><button @click="getData">Get API data</button> max: {{ this.maxValue }} min: {{ this.minValue }}</ul>
+    <ul><button @click="getData">Get API data</button> max: {{ this.maxValue }} min: {{ this.minValue }} <button @click="fillMissingCells">Fill Missing Cells</button></ul>
     <div id="mapContainer"></div>
   </div>
 </template>
@@ -19,6 +19,7 @@ export default {
       gridLayer: null,
       maxValue: 0,
       minValue: 0,
+      cellsData: new Map(),
       cellSize: 0.005, // Size of grid cells in degrees (adjust as needed)
       data: [{"lat":-25.0597949,"lon":-53.3775221, "tx":150000},
               {"lat":-24.974903,"lon":-53.5071357 , "tx":350000},
@@ -96,36 +97,40 @@ export default {
     },
 
     calculateGridCells() {
-      const cells = new Map();
-      
-      this.data.forEach(point => {
-        const cellX = Math.floor(point.lon / this.cellSize);
-        const cellY = Math.floor(point.lat / this.cellSize);
-        const key = `${cellX},${cellY}`;
+        if (this.data.length === 0) return [];
         
-        if (!cells.has(key)) {
-          cells.set(key, {
-            minLon: cellX * this.cellSize,
-            maxLon: (cellX + 1) * this.cellSize,
-            minLat: cellY * this.cellSize,
-            maxLat: (cellY + 1) * this.cellSize,
-            sum: 0,
-            count: 0
-          });
+        // Only clear if we're processing new data points
+        if (this.cellsData.size === 0) {
+            this.data.forEach(point => {
+            const cellX = Math.floor(point.lon / this.cellSize);
+            const cellY = Math.floor(point.lat / this.cellSize);
+            const key = `${cellX},${cellY}`;
+            
+            if (!this.cellsData.has(key)) {
+                this.cellsData.set(key, {
+                minLon: cellX * this.cellSize,
+                maxLon: (cellX + 1) * this.cellSize,
+                minLat: cellY * this.cellSize,
+                maxLat: (cellY + 1) * this.cellSize,
+                sum: 0,
+                count: 0,
+                cellX,
+                cellY
+                });
+            }
+            
+            const cell = this.cellsData.get(key);
+            cell.sum += point.tx;
+            cell.count += 1;
+            });
         }
-        
-        const cell = cells.get(key);
-        cell.sum += point.tx;
-        cell.count += 1;
-      });
 
-      return Array.from(cells.values())
-        .map(cell => ({
-          ...cell,
-          avgTx: cell.sum / cell.count
-        }))
-        .filter(cell => cell.count > 0);
-    },
+        return Array.from(this.cellsData.values())
+            .map(cell => ({
+            ...cell,
+            avgTx: cell.count > 0 ? cell.sum / cell.count : cell.sum
+            }));
+        },
 
     getColorForValue(value) {
       // Calculate mean and standard deviation
@@ -150,27 +155,82 @@ export default {
     },
 
     async getData() {
-      try {
-        const response = await axios.get('http://localhost:8000');
-        this.imodata = response.data;
-        this.data = this.imodata
-          .filter(item => item.Latitude && item.Longitude && item.Area)
-          .map(item => ({
-            lat: item.Latitude,
-            lon: item.Longitude,
-            tx: item.Price/item.Area
-          }));
-        this.createGrid();
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    }
-  },
+        try {
+            const response = await axios.get('http://localhost:8000');
+            this.imodata = response.data;
+            this.data = this.imodata
+            .filter(item => item.Latitude && item.Longitude && item.Area)
+            .map(item => ({
+                lat: item.Latitude,
+                lon: item.Longitude,
+                tx: item.Price/item.Area
+            }));
+            this.cellsData.clear(); // Clear existing cells before creating new grid
+            this.createGrid();
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+        },
+    fillMissingCells() {
+        let hasNewCells = false;
+        const existingCells = new Map(this.cellsData);
+        
+        // Find min/max coordinates to determine grid boundaries
+        const allCells = Array.from(existingCells.values());
+        const minX = Math.min(...allCells.map(c => c.cellX));
+        const maxX = Math.max(...allCells.map(c => c.cellX));
+        const minY = Math.min(...allCells.map(c => c.cellY));
+        const maxY = Math.max(...allCells.map(c => c.cellY));
+
+        // Check each possible cell position
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+              const key = `${x},${y}`;
+              
+              // Skip if cell already exists
+              if (existingCells.has(key)) continue;
+
+              // Check neighbors (up, down, left, right)
+              const neighbors = [
+                  existingCells.get(`${x},${y+1}`),
+                  existingCells.get(`${x},${y-1}`),
+                  existingCells.get(`${x+1},${y}`),
+                  existingCells.get(`${x-1},${y}`)
+              ].filter(Boolean);
+
+              // If we have at least 2 neighbors, create new cell
+              if (neighbors.length >= 3) {
+                  const avgTx = neighbors.reduce((sum, cell) => {
+                  const cellValue = cell.count > 0 ? cell.sum / cell.count : cell.sum;
+                  return sum + cellValue;
+                  }, 0) / neighbors.length;
+                  
+                  this.cellsData.set(key, {
+                  minLon: x * this.cellSize,
+                  maxLon: (x + 1) * this.cellSize,
+                  minLat: y * this.cellSize,
+                  maxLat: (y + 1) * this.cellSize,
+                  sum: avgTx,  // Store the average as the sum for interpolated cells
+                  count: 0,    // Use count 0 to identify interpolated cells
+                  cellX: x,
+                  cellY: y
+                  });
+                  hasNewCells = true;
+              }
+            }
+        }
+
+        // If new cells were added, update the grid
+        if (hasNewCells) {
+            this.createGrid();
+        }
+        },
   beforeUnmount() {
     if (this.map) {
       this.map.remove();
     }
   }
+},
 };
 </script>
 
