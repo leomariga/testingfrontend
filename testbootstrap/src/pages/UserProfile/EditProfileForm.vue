@@ -82,6 +82,16 @@
 
       <div class="row">
         <div class="col-md-12">
+          <base-input type="tel"
+                    label="Phone Number"
+                    placeholder="Phone Number"
+                    v-model="user.phoneNumber">
+          </base-input>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
           <div class="form-group">
             <label>About Me</label>
             <textarea rows="5" class="form-control border-input"
@@ -119,6 +129,7 @@
           city: 'melbourne',
           country: 'Australia',
           postalCode: '',
+          phoneNumber: '',
           aboutMe: `Lamborghini Mercy, Your chick she so thirsty, I'm in that two seat Lambo.`
         }
       }

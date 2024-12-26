@@ -7,14 +7,17 @@
       <a href="#">
         <img class="avatar border-gray" src="img/faces/face-3.jpg" alt="..."/>
 
-        <h4 class="title">Mike Andrew<br />
-          <small>michael24</small>
+        <h4 class="title">Sarah Wilson<br />
+          <small>sarahw</small>
         </h4>
       </a>
     </div>
-    <p class="description text-center"> "Lamborghini Mercy <br>
-      Your chick she so thirsty <br>
-      I'm in that two seat Lambo"
+    <p class="description text-center"> "Software developer by day<br>
+      Photography enthusiast by night<br>
+      Always learning something new"
+    </p>
+    <p class="text-center">
+      <i class="fa fa-phone"></i> (555) 123-4567
     </p>
     <template #footer>
       <div class="text-center d-flex justify-content-center">
