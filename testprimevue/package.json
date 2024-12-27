@@ -9,8 +9,10 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.2.5",
+    "axios": "^1.7.9",
     "core-js": "^3.8.3",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "primeicons": "^7.0.0",
     "primevue": "^4.2.5",
     "vue": "^3.2.13",
