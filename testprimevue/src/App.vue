@@ -278,7 +278,6 @@ export default {
 }
 
 .layout-content {
-  padding: 2rem;
   flex: 1;
 }
 
