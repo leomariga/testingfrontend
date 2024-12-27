@@ -9,49 +9,55 @@ import Help from '../views/Help.vue'
 const routes = [
   {
     path: '/new-search',
-    name: 'NewSearch',
+    name: 'Pesquisa imobiliária',
     component: NewSearch,
     meta: {
+      show_in_sidebar: true,
       icon: 'pi pi-search'
     }
   },
   {
     path: '/price-viewer',
-    name: 'PriceViewer',
+    name: 'Mapa de preços',
     component: PriceViewer,
     meta: {
+      show_in_sidebar: true,
       icon: 'pi pi-chart-line'
     }
   },
   {
     path: '/history',
-    name: 'History',
+    name: 'Histórico de preços',
     component: History,
     meta: {
+      show_in_sidebar: true,
       icon: 'pi pi-history'
     }
   },
   {
     path: '/settings',
-    name: 'Settings',
+    name: 'Configurações',
     component: Settings,
     meta: {
+      show_in_sidebar: false,
       icon: 'pi pi-cog'
     }
   },
   {
     path: '/my-account',
-    name: 'MyAccount',
+    name: 'Minha conta',
     component: MyAccount,
     meta: {
+      show_in_sidebar: false,
       icon: 'pi pi-user'
     }
   },
   {
     path: '/help',
-    name: 'Help',
+    name: 'Ajuda',
     component: Help,
     meta: {
+      show_in_sidebar: true,  
       icon: 'pi pi-question-circle'
     }
   }

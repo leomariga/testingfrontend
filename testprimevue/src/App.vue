@@ -1,7 +1,10 @@
 <template>
   <div class="layout-wrapper">
     <!-- Permanent Navigation Sidebar -->
-    <div class="layout-sidebar">
+    <div class="layout-sidebar" 
+         :class="{ 'collapsed': !isExpanded }"
+         @mouseenter="handleMouseEnter"
+         @mouseleave="handleMouseLeave">
       <div class="sidebar-header">
         <img src="@/assets/logo.png" alt="Logo" class="logo" />
         <h2>Dashboard</h2>
@@ -21,20 +24,19 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-info">
+        <router-link to="/my-account" class="nav-item">
           <i class="pi pi-user"></i>
-          <span>John Doe</span>
-        </div>
+          <span>My Account</span>
+        </router-link>
       </div>
     </div>
 
     <!-- Main Content Area -->
-    <div class="layout-main">
+    <div class="layout-main" :class="{ 'collapsed': !isExpanded }">
       <!-- Top Header Bar -->
       <div class="layout-topbar">
         <h2 class="page-title">{{ currentRoute }}</h2>
         <div class="topbar-right">
-          <PrimeButton icon="pi pi-bell" class="p-button-text" />
           <PrimeButton icon="pi pi-cog" class="p-button-text" />
         </div>
       </div>
@@ -48,7 +50,7 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PrimeButton from 'primevue/button'
 
@@ -66,7 +68,7 @@ export default {
     // Generate menu items from router configuration
     const menuItems = computed(() => 
       router.options.routes
-        .filter(route => route.path !== '/' && route.name) // Filter out root path and unnamed routes
+        .filter(route => route.path !== '/' && route.name && route.meta?.show_in_sidebar) // Filter out root path and unnamed routes
         .map(route => ({
           label: route.name,
           icon: route.meta?.icon || 'pi pi-circle-fill', // Use route meta icon or default
@@ -75,9 +77,22 @@ export default {
         }))
     )
 
+    const isExpanded = ref(false)
+    
+    const handleMouseEnter = () => {
+      isExpanded.value = true
+    }
+    
+    const handleMouseLeave = () => {
+      isExpanded.value = false
+    }
+
     return {
       menuItems,
-      currentRoute
+      currentRoute,
+      isExpanded,
+      handleMouseEnter,
+      handleMouseLeave
     }
   }
 }
@@ -101,6 +116,29 @@ export default {
   left: 0;
   top: 0;
   bottom: 0;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.layout-sidebar.collapsed {
+  width: 60px;
+  overflow: hidden;
+}
+
+.layout-sidebar.collapsed .sidebar-header h2,
+.layout-sidebar.collapsed .nav-item span {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.layout-sidebar:hover {
+  width: 260px;
+}
+
+.layout-sidebar:hover .sidebar-header h2,
+.layout-sidebar:hover .nav-item span {
+  opacity: 1;
+  visibility: visible;
 }
 
 .sidebar-header {
@@ -120,6 +158,7 @@ export default {
   margin: 0;
   color: var(--primary-color);
   font-size: 1.25rem;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .sidebar-nav {
@@ -135,6 +174,40 @@ export default {
   text-decoration: none;
   transition: all 0.2s;
   gap: 0.75rem;
+  white-space: nowrap;
+  position: relative;
+}
+
+.nav-item span {
+  position: absolute;
+  left: 3.5rem;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.nav-item i {
+  font-size: 1.25rem;
+  width: 1.25rem;
+  text-align: center;
+  margin-left: -0.25rem;
+}
+
+.layout-sidebar.collapsed .nav-item {
+  padding: 0.875rem 1.2rem;
+}
+
+.layout-sidebar.collapsed .nav-item span {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.layout-sidebar:hover .nav-item {
+  padding: 0.875rem 1.5rem;
+}
+
+.layout-sidebar:hover .nav-item span {
+  opacity: 1;
+  visibility: visible;
 }
 
 .nav-item:hover {
@@ -148,13 +221,14 @@ export default {
   font-weight: 600;
 }
 
-.nav-item i {
-  font-size: 1.25rem;
+.sidebar-footer {
+  padding: 1rem 0;
+  border-top: 1px solid var(--surface-border);
 }
 
-.sidebar-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--surface-border);
+.sidebar-footer .nav-item {
+  margin: 0;
+  padding: 0.875rem 1.5rem;
 }
 
 .user-info {
@@ -175,6 +249,11 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.layout-main.collapsed {
+  margin-left: 60px;
 }
 
 .layout-topbar {
