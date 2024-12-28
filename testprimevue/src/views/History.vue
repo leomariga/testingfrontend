@@ -1,46 +1,19 @@
 <template>
   <div class="price-viewer">
-    <div class="floating-card">
-      <Card>
-        <template #content>
-          <div class="search-wrapper">
-            <div class="search-container">
-              <AutoComplete
-                v-model="selectedCity"
-                :suggestions="filteredCities"
-                @complete="searchCity"
-                optionLabel="name"
-                placeholder="Pesquise uma cidade"
-                dropdown
-                :showClear="true"
-                class="full-width-autocomplete"
-              />
-              <Dropdown
-                v-model="selectedType"
-                :options="propertyTypes"
-                optionLabel="name"
-                class="property-type-dropdown"
-              />
-              <Button @click="getData" label="Buscar" />
-            </div>
-          </div>
-        </template>
-      </Card>
-    </div>
+    <SearchCard 
+      @search="getData"
+      @city-changed="handleCityChange"
+      buttonLabel="Ver histórico"
+    />
     <div id="map-container" class="map-container"></div>
   </div>
 </template>
 
-
-
 <script>
-import Card from 'primevue/card';
-import AutoComplete from 'primevue/autocomplete';
-import Dropdown from 'primevue/dropdown';
-import Button from 'primevue/button';
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import axios from 'axios';
+import SearchCard from '@/components/SearchCard.vue'
+import "leaflet/dist/leaflet.css"
+import L from "leaflet"
+import axios from 'axios'
 
 // Define map variables outside of Vue component
 let leafletMap = null;
@@ -48,10 +21,7 @@ let leafletMap = null;
 export default {
   name: "GridHeatMap",
   components: {
-    Card,
-    AutoComplete,
-    Dropdown,
-    Button
+    SearchCard
   },
   data() {
     return {
@@ -60,27 +30,9 @@ export default {
       maxValue: 0,
       minValue: 0,
       cellsData: new Map(),
-      cellSize: 0.005, // Size of grid cells in degrees (adjust as needed)
-      data: [],
-      selectedCity: null,
-      cities: [
-        { name: 'New York', code: 'NY', lat: 40.7128, lng: -74.0060 },
-        { name: 'Rome', code: 'RM', lat: 41.9028, lng: 12.4964 },
-        { name: 'London', code: 'LDN', lat: 51.5074, lng: -0.1278 },
-        { name: 'Istanbul', code: 'IST', lat: 41.0082, lng: 28.9784 },
-        { name: 'Paris', code: 'PRS', lat: 48.8566, lng: 2.3522 },
-        { name: 'Cascavel', code: 'CV', lat: -24.9555, lng: -53.4552 }
-      ],
-      filteredCities: [],
-      selectedType: { name: 'Tudo', value: 'all' },
-      propertyTypes: [
-        { name: 'Tudo', value: 'all' },
-        { name: 'Apartamentos', value: 'apartments' },
-        { name: 'Casas', value: 'houses' },
-        { name: 'Barracões', value: 'warehouses' },
-        { name: 'Lotes', value: 'lots' }
-      ],     
-    };
+      cellSize: 0.005,
+      data: []
+    }
   },
   mounted() {
     this.initializeMap();
@@ -194,26 +146,31 @@ export default {
     },
 
     async getData() {
-        try {
-            const response = await axios.get('http://localhost:8000');
-            this.imodata = response.data;
-            this.data = this.imodata
-            .filter(item => item.Latitude && item.Longitude && item.Area)
-            .map(item => ({
-                lat: item.Latitude,
-                lon: item.Longitude,
-                tx: item.Price/item.Area
-            }));
-            this.cellsData.clear(); // Clear existing cells before creating new grid
-            this.createGrid();
-            for (let i = 0; i < 5; i++) {
-                this.fillMissingCells();
-                await new Promise(resolve => setTimeout(resolve, 200)); // 1 second delay
-            }
-        } catch (error) {
-            console.error("Error fetching data:", error);
+      try {
+        const response = await axios.get('http://localhost:8000');
+        this.imodata = response.data;
+        this.data = this.imodata
+          .filter(item => item.Latitude && item.Longitude && item.Area)
+          .map(item => ({
+            lat: item.Latitude,
+            lon: item.Longitude,
+            tx: item.Price/item.Area
+          }));
+        this.cellsData.clear();
+        this.createGrid();
+        for (let i = 0; i < 5; i++) {
+          this.fillMissingCells();
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
-        },
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    },
+    handleCityChange(newCity) {
+      if (newCity?.lat && newCity?.lng && leafletMap) {
+        leafletMap.setView([newCity.lat, newCity.lng], 13);
+      }
+    },
     fillMissingCells() {
         let hasNewCells = false;
         const existingCells = new Map(this.cellsData);
@@ -278,62 +235,10 @@ export default {
 </script>
 
 <style scoped>
-.floating-card {
-  position: absolute;
-  top: 1rem;
-  left: calc(25% - 2rem);
-  right: 1rem;
-  z-index: 1000;
-  width: calc(50% - 2rem);
-}
-
 .map-container {
   height: calc(100vh - 100px);
   width: 100%;
   position: relative;
-}
-/* Search container styles */
-.search-container {
-  padding: 1rem;
-  display: flex;
-  gap: 1rem;
-  width: 100%;
-}
-
-.full-width-autocomplete {
-  flex: 1;
-}
-
-:deep(.full-width-autocomplete) {
-  position: relative;
-  width: 100%;
-}
-
-:deep(.full-width-autocomplete .p-autocomplete) {
-  width: 100%;
-}
-
-:deep(.full-width-autocomplete input) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.p-autocomplete-panel) {
-  width: calc(100% - 2rem) !important;
-  left: 1rem !important;
-}
-
-:deep(.p-card) {
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-
-
-:deep(.p-card-body) {
-  padding: 0;
-  margin: 0;
-  border: none;
 }
 
 .price-viewer {
