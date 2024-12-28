@@ -5,12 +5,21 @@
       @city-changed="handleCityChange"
       buttonLabel="Ver histórico"
     />
+    <ColorRangeSlider
+      v-if="data.length > 0"
+      :default-min="minValue"
+      :default-max="maxValue"
+      :absolute-min="absoluteMin"
+      :absolute-max="absoluteMax"
+      @range-changed="handleRangeChange"
+    />
     <div id="map-container" class="map-container"></div>
   </div>
 </template>
 
 <script>
 import SearchCard from '@/components/SearchCard.vue'
+import ColorRangeSlider from '@/components/ColorRangeSlider.vue'
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
 import axios from 'axios'
@@ -21,7 +30,8 @@ let leafletMap = null;
 export default {
   name: "GridHeatMap",
   components: {
-    SearchCard
+    SearchCard,
+    ColorRangeSlider
   },
   data() {
     return {
@@ -31,7 +41,9 @@ export default {
       minValue: 0,
       cellsData: new Map(),
       cellSize: 0.005,
-      data: []
+      data: [],
+      absoluteMin: 0,
+      absoluteMax: 0
     }
   },
   mounted() {
@@ -61,10 +73,11 @@ export default {
         leafletMap.removeLayer(this.gridLayer);
       }
 
-      // Create grid cells
       const cells = this.calculateGridCells();
-      
       this.gridLayer = L.featureGroup();
+      
+      // Add legend first
+      this.addLegend();
       
       cells.forEach(cell => {
         const bounds = [
@@ -73,18 +86,69 @@ export default {
         ];
         
         const color = this.getColorForValue(cell.avgTx);
+        
         const rectangle = L.rectangle(bounds, {
-          color: "#000",
-          weight: 1,
+          color: "#333",
+          weight: 0.5,
           fillColor: color,
-          fillOpacity: 0.5
+          fillOpacity: 0.7,
+          className: 'grid-cell'
         });
         
-        rectangle.bindPopup(`Average TX: ${cell.avgTx.toFixed(3)}<br>Points: ${cell.count}`);
+        const formattedAvg = cell.avgTx.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        });
+        
+        rectangle.bindPopup(`
+          <div style="font-family: Arial, sans-serif;">
+            <strong>Preço médio/m²:</strong> ${formattedAvg}<br>
+            <strong>Amostras:</strong> ${cell.count}<br>
+            ${cell.count === 0 ? '<em>(Valor interpolado)</em>' : ''}
+          </div>
+        `);
+        
         this.gridLayer.addLayer(rectangle);
       });
       
       this.gridLayer.addTo(leafletMap);
+    },
+
+    addLegend() {
+      const existingLegend = document.querySelector('.legend');
+      if (existingLegend) {
+        existingLegend.remove();
+      }
+
+      const legend = L.control({ position: 'bottomright' });
+      legend.onAdd = () => {
+        const div = L.DomUtil.create('div', 'legend');
+        const grades = [
+          this.minValue,
+          this.minValue + (this.maxValue - this.minValue) * 0.25,
+          this.minValue + (this.maxValue - this.minValue) * 0.5,
+          this.minValue + (this.maxValue - this.minValue) * 0.75,
+          this.maxValue
+        ];
+
+        div.innerHTML = '<h4>Preço/m²</h4>';
+        
+        for (let i = 0; i < grades.length - 1; i++) {
+          const color = this.interpolateViridis(i / (grades.length - 2));
+          const formattedValue = grades[i].toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+          });
+          
+          div.innerHTML += `
+            <i style="background: ${color}"></i>
+            ${formattedValue}<br>
+          `;
+        }
+
+        return div;
+      };
+      legend.addTo(leafletMap);
     },
 
     calculateGridCells() {
@@ -124,25 +188,30 @@ export default {
         },
 
     getColorForValue(value) {
-      // Calculate mean and standard deviation
-      const mean = this.data.reduce((sum, d) => sum + d.tx, 0) / this.data.length;
-      const variance = this.data.reduce((sum, d) => sum + Math.pow(d.tx - mean, 2), 0) / this.data.length;
-      const stdDev = Math.sqrt(variance);
+      const clampedValue = Math.min(Math.max(value, this.minValue), this.maxValue)
+      const normalized = (clampedValue - this.minValue) / (this.maxValue - this.minValue)
+      return this.interpolateViridis(normalized)
+    },
 
-      // Set limits at 2 standard deviations from mean
-      this.minValue = Math.max(0, mean - (1 * stdDev)); // Trunk to 0 if negative
-      this.maxValue = mean + (1 * stdDev);
+    interpolateViridis(t) {
+      const c0 = [68, 1, 84];    // Dark purple
+      const c1 = [65, 182, 196]; // Turquoise
+      const c2 = [253, 231, 37]; // Yellow
 
-      // Clamp value between min and max
-      const clampedValue = Math.min(Math.max(value, this.minValue), this.maxValue);
+      let r, g, b;
+      if (t < 0.5) {
+        const x = t * 2;
+        r = c0[0] + (c1[0] - c0[0]) * x;
+        g = c0[1] + (c1[1] - c0[1]) * x;
+        b = c0[2] + (c1[2] - c0[2]) * x;
+      } else {
+        const x = (t - 0.5) * 2;
+        r = c1[0] + (c2[0] - c1[0]) * x;
+        g = c1[1] + (c2[1] - c1[1]) * x;
+        b = c1[2] + (c2[2] - c1[2]) * x;
+      }
       
-      // Normalize the clamped value
-      const normalized = (clampedValue - this.minValue) / (this.maxValue - this.minValue);
-      
-      // RGB interpolation from blue to red
-      const r = Math.round(normalized * 255);
-      const b = Math.round((1 - normalized) * 255);
-      return `rgb(${r}, 0, ${b})`;
+      return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
     },
 
     async getData() {
@@ -156,12 +225,26 @@ export default {
             lon: item.Longitude,
             tx: item.Price/item.Area
           }));
+
+        // Calculate initial min/max values after data is loaded
+        const values = this.data.map(d => d.tx);
+        const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+        const stdDev = Math.sqrt(variance);
+        
+        this.absoluteMin = Math.max(0, mean - (2 * stdDev));
+        this.absoluteMax = mean + (2 * stdDev);
+        this.minValue = Math.max(0, mean - stdDev);
+        this.maxValue = mean + stdDev;
+
         this.cellsData.clear();
         this.createGrid();
+        
+        // Use Promise.all for multiple async operations
         for (let i = 0; i < 5; i++) {
           this.fillMissingCells();
-          await new Promise(resolve => setTimeout(resolve, 200));
         }
+
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -225,10 +308,18 @@ export default {
             this.createGrid();
         }
         },
+    handleRangeChange({ min, max }) {
+      this.minValue = min
+      this.maxValue = max
+      this.createGrid() // Redraw the grid with new colors
+    },
   beforeUnmount() {
     if (leafletMap) {
       leafletMap.remove();
+      leafletMap = null;
     }
+    // Clear any remaining timeouts
+    this.cellsData.clear();
   }
 },
 };
@@ -244,5 +335,27 @@ export default {
 .price-viewer {
   position: relative;
   height: 100%;
+}
+
+:deep(.legend) {
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  line-height: 1.5;
+}
+
+:deep(.legend h4) {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+:deep(.legend i) {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin-right: 8px;
+  opacity: 0.7;
 }
 </style> 
