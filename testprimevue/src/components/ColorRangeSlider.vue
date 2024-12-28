@@ -15,6 +15,17 @@
         </div>
       </div>
 
+      <div class="central-line">
+        <div 
+          v-for="(tick, index) in priceScaleTicks" 
+          :key="index"
+          class="central-tick"
+          :style="{ top: `${tick.position}%` }"
+        >
+          <div class="tick-mark"></div>
+        </div>
+      </div>
+
       <div class="color-bar-container" ref="colorBar">
         <!-- Background bar -->
         <div class="color-bar-background"></div>
@@ -27,7 +38,7 @@
           }"
         >
           <div 
-            v-for="(color, index) in [...gradientColors].reverse()" 
+            v-for="(color, index) in gradientColors" 
             :key="index"
             class="color-segment"
             :style="{ 
@@ -35,6 +46,16 @@
               height: `${100 / gradientColors.length}%`
             }"
           />
+        </div>
+        <div class="handle-markers">
+          <div 
+            class="handle-marker max-marker"
+            :style="{ top: `${maxHandlePosition}%` }"
+          ></div>
+          <div 
+            class="handle-marker min-marker"
+            :style="{ top: `${minHandlePosition}%` }"
+          ></div>
         </div>
       </div>
       
@@ -44,10 +65,8 @@
           :style="{ top: `${maxHandlePosition}%` }"
           @mousedown="startDrag($event, 'max')"
         >
-          <div class="handle-content">
-            <div class="handle-label">Máximo</div>
-            <div class="handle-value">{{ formatCurrency(maxValue) }}</div>
-            <div class="handle-grip"></div>
+          <div class="handle-diamond">
+            <div class="handle-tooltip">{{ formatCurrency(maxValue) }}</div>
           </div>
         </div>
         
@@ -56,10 +75,8 @@
           :style="{ top: `${minHandlePosition}%` }"
           @mousedown="startDrag($event, 'min')"
         >
-          <div class="handle-content">
-            <div class="handle-label">Mínimo</div>
-            <div class="handle-value">{{ formatCurrency(minValue) }}</div>
-            <div class="handle-grip"></div>
+          <div class="handle-diamond">
+            <div class="handle-tooltip">{{ formatCurrency(minValue) }}</div>
           </div>
         </div>
       </div>
@@ -170,9 +187,9 @@ export default {
     },
     updateGradientColors() {
       const steps = 20
-      this.gradientColors = Array.from({ length: steps }).map((_, i) => {
-        return this.interpolateViridis(i / (steps - 1))
-      })
+      this.gradientColors = Array.from({ length: steps })
+        .map((_, i) => this.interpolateViridis(i / (steps - 1)))
+        .reverse()
     },
     interpolateViridis(t) {
       const c0 = [68, 1, 84]     // Dark purple
@@ -209,11 +226,13 @@ export default {
 <style scoped>
 .color-range-slider {
   position: absolute;
-  right: 20px;
+  right: 25px;
   top: 50%;
   transform: translateY(-50%);
   background: white;
-  padding: 20px;
+  padding: 16px;
+  padding-right: 64px;
+  width: 160px;
   border-radius: 8px;
   box-shadow: var(--card-shadow);
   z-index: 1000;
@@ -230,18 +249,18 @@ export default {
 .slider-container {
   position: relative;
   height: 300px;
-  width: 60px;
-  margin: 0 20px;
+  width: 1px;
+  margin: 0;
 }
 
 .color-bar-container {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 20px;
+  width: 8px;
   height: 100%;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .color-bar-background {
@@ -269,81 +288,78 @@ export default {
 
 .slider-handle {
   position: absolute;
-  left: 0;
+  right: -20px;
   transform: translateY(-50%);
-  width: 140px;
-  height: 24px;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: 4px;
   cursor: pointer;
   z-index: 2;
-  box-shadow: var(--card-shadow);
-}
-
-.handle-content {
-  position: relative;
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
-  height: 100%;
-  padding: 0 8px;
+  justify-content: center;
+}
+
+.handle-diamond {
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.handle-tooltip {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
   background: var(--surface-card);
+  padding: 4px 8px;
   border-radius: 4px;
-}
-
-.handle-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
-  margin-right: 8px;
-}
-
-.handle-value {
   white-space: nowrap;
-  font-size: 0.85rem;
-  color: var(--text-color);
-  flex: 1;
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
 }
 
-.handle-grip {
-  width: 12px;
-  height: 12px;
-  margin-left: 8px;
-  position: relative;
+.slider-handle:hover .handle-diamond {
+  transform: rotate(45deg) scale(1.2);
 }
 
-.handle-grip::before,
-.handle-grip::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--text-color-secondary);
-  border-radius: 1px;
+.max-handle .handle-diamond {
+  border-width: 2px;
+  background: rgb(253, 231, 37);  /* Yellow */
+  border: 2px solid rgb(200, 180, 0);
 }
 
-.handle-grip::before {
-  top: 2px;
+.min-handle .handle-diamond {
+  border-width: 2px;
+  background: rgb(68, 1, 84);     /* Purple */
+  border: 2px solid rgb(40, 0, 50);
 }
 
-.handle-grip::after {
-  bottom: 2px;
+.max-handle:hover .handle-diamond {
+  background: rgb(255, 240, 100);  /* Lighter yellow */
+  border-color: rgb(253, 231, 37);
 }
 
-.handles-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.min-handle:hover .handle-diamond {
+  background: rgb(100, 20, 120);   /* Lighter purple */
+  border-color: rgb(68, 1, 84);
+}
+
+.slider-handle:hover .handle-tooltip {
+  opacity: 1;
 }
 
 .price-scale {
   position: absolute;
-  right: 100%;
+  left: 100%;
   height: 100%;
-  margin-right: 12px;
-  width: 100px;
+  margin-left: 16px;
+  width: auto;
+  max-width: 48px;
 }
 
 .price-tick {
@@ -351,19 +367,70 @@ export default {
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  width: 100%;
+  flex-direction: row-reverse;
+  gap: 4px;
 }
 
 .price-label {
   font-size: 0.75rem;
   color: var(--text-color-secondary);
-  margin-right: 8px;
   white-space: nowrap;
+  text-align: right;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tick-line {
-  flex: 1;
+  width: 4px;
   height: 1px;
-  background: var(--surface-border);
+  background: transparent;
+}
+
+.handle-markers {
+  position: absolute;
+  top: 0;
+  left: -2px;
+  right: -2px;
+  height: 100%;
+  pointer-events: none;
+}
+
+.handle-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transform: translateY(-50%);
+}
+
+.max-marker {
+  background: rgb(253, 231, 37);  /* Yellow */
+}
+
+.min-marker {
+  background: rgb(68, 1, 84);     /* Purple */
+}
+
+.central-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(100% + 4px);
+  width: 1px;
+  background: #000;
+}
+
+.central-tick {
+  position: absolute;
+  transform: translateY(-50%);
+}
+
+.tick-mark {
+  width: 4px;
+  height: 1px;
+  background: #000;
+  margin-left: 1px;
 }
 </style> 

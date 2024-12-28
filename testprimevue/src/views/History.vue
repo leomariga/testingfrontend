@@ -13,6 +13,10 @@
       :absolute-max="absoluteMax"
       @range-changed="handleRangeChange"
     />
+    <DateRangeSlider
+      v-if="data.length > 0"
+      @range-changed="handleDateRangeChange"
+    />
     <div id="map-container" class="map-container"></div>
   </div>
 </template>
@@ -20,6 +24,7 @@
 <script>
 import SearchCard from '@/components/SearchCard.vue'
 import ColorRangeSlider from '@/components/ColorRangeSlider.vue'
+import DateRangeSlider from '@/components/DateRangeSlider.vue'
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
 import axios from 'axios'
@@ -31,7 +36,8 @@ export default {
   name: "GridHeatMap",
   components: {
     SearchCard,
-    ColorRangeSlider
+    ColorRangeSlider,
+    DateRangeSlider
   },
   data() {
     return {
@@ -133,8 +139,8 @@ export default {
 
         div.innerHTML = '<h4>Preço/m²</h4>';
         
-        for (let i = 0; i < grades.length - 1; i++) {
-          const color = this.interpolateViridis(i / (grades.length - 2));
+        for (let i = 0; i < grades.length; i++) {
+          const color = this.interpolateViridis(i *0.25);
           const formattedValue = grades[i].toLocaleString('pt-BR', {
             style: 'currency',
             currency: 'BRL'
@@ -312,6 +318,10 @@ export default {
       this.minValue = min
       this.maxValue = max
       this.createGrid() // Redraw the grid with new colors
+    },
+    handleDateRangeChange() {
+      // Filter data based on date range
+      // You'll need to add date filtering logic here
     },
   beforeUnmount() {
     if (leafletMap) {
